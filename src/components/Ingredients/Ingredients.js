@@ -19,6 +19,10 @@ const Ingredients = () => {
             });
     }, []);
 
+    useEffect(() => {
+        console.log('Rendering ingredients', userIngredients)
+    },[userIngredients]);
+
     const addIngredientHandler = (ingredient) => {
         fetch('https://react-hooks-update-59122.firebaseio.com/ingredients.json', {
             method: 'POST',
