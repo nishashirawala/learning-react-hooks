@@ -1,5 +1,12 @@
 import {useReducer, useCallback} from 'react';
 
+const initialState = {
+    loading: false,
+    error: null,
+    data: null,
+    requestExtra: null,
+    identifier: null
+};
 
 const httpReducer = (currentHttpState, action) => {
     switch (action.type) {
@@ -9,22 +16,17 @@ const httpReducer = (currentHttpState, action) => {
             return {...currentHttpState, loading: false, data: action.responseData, requestExtra: action.extra};
         case 'ERROR':
             return {loading: false, error: action.errorMessage};
-        case 'CLEAR_ERROR':
-            return {...currentHttpState, error: null};
+        case 'CLEAR_ERROR' :
+            return initialState;
         default:
             throw new Error('Should not be reached!!');
     }
 };
 
 const useHttp = () => {
-    const[httpState, dispatchHttp] =
-        useReducer(httpReducer,{
-            loading: false,
-            error: null,
-            data: null,
-            requestExtra: null,
-            identifier: null
-        });
+    const[httpState, dispatchHttp] = useReducer(httpReducer, initialState);
+
+    const clearError = useCallback(() => dispatchHttp({type: 'CLEAR_ERROR'}), []);
 
     const sendRequest = useCallback((url, method, body, reqExtra, reqIdentifier) => {
         dispatchHttp({type: 'SEND', identifier: reqIdentifier});
@@ -47,7 +49,8 @@ const useHttp = () => {
         error: httpState.error,
         sendRequest: sendRequest,
         requestExtra: httpState.requestExtra,
-        requestIdentifier: httpState.identifier
+        requestIdentifier: httpState.identifier,
+        clearError: clearError
     };
 };
 
