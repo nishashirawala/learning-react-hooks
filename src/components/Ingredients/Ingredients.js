@@ -4,6 +4,7 @@ import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
 import Search from './Search';
 import ErrorModal from "../UI/ErrorModal";
+import useHttp from '../../hooks/http';
 
 
 const ingredientReducer = (currentIngredients, action) => {
@@ -19,36 +20,35 @@ const ingredientReducer = (currentIngredients, action) => {
     }
 };
 
-const httpReducer = (currentHttpState, action) => {
-    switch (action.type) {
-        case 'SEND':
-            return {loading: true, error: null};
-        case 'RESPONSE':
-            return {...currentHttpState, loading: false};
-        case 'ERROR':
-            return {loading: false, error: action.errorMessage};
-        case 'CLEAR_ERROR':
-            return {...currentHttpState, error: null};
-        default:
-            throw new Error('Should not be reached!!');
-    }
-};
 
 
 const Ingredients = () => {
     const[userIngredients, dispatch] = useReducer(ingredientReducer, [], );
-    const[httpState, dispatchHttp] = useReducer(httpReducer,{loading: false, error: null} );
+
+    const { isLoading, data, error, sendRequest, requestExtra, requestIdentifier } = useHttp();
 
     useEffect(() => {
-        console.log('Rendering ingredients', userIngredients)
-    },[userIngredients]);
+        // console.log('Rendering ingredients', userIngredients)
+        if(!isLoading && !error && requestIdentifier === 'REMOVE_INGREDIENT') {
+            dispatch({type: 'DELETE', id: requestExtra});
+        } else if(!isLoading && !error && requestIdentifier === 'ADD_INGREDIENT') {
+            dispatch({type: 'ADD', ingredient: {id: data.name, ...requestExtra}})
+        }
+
+    },[data, requestExtra, requestIdentifier, isLoading, error]);
 
     const filteredIngredientsHandler = useCallback(filteredIngredients => {
         dispatch({type: 'SET', ingredients: filteredIngredients})
     },[]);
 
     const addIngredientHandler = useCallback((ingredient) => {
-        dispatchHttp({type: 'SEND'})
+        sendRequest('https://react-hooks-update-59122.firebaseio.com/ingredients.json',
+                    'POST',
+                    JSON.stringify(ingredient),
+                    ingredient,
+                    'ADD_INGREDIENT');
+
+       /* dispatchHttp({type: 'SEND'})
         fetch('https://react-hooks-update-59122.firebaseio.com/ingredients.json', {
             method: 'POST',
             body: JSON.stringify(ingredient),
@@ -60,23 +60,16 @@ const Ingredients = () => {
             dispatch({type: 'ADD', ingredient: {id: responseData.name, ...ingredient}})
         }).catch(error => {
             dispatchHttp({type: 'ERROR', errorMessage: error.message});
-        });
+        });*/
     }, []);
 
     const removeIngredientHandler = useCallback(ingredientId => {
-        dispatchHttp({type: 'SEND'})
-        fetch(`https://react-hooks-update-59122.firebaseio.com/ingredients/${ingredientId}.json`, {
-            method: 'DELETE',
-        }).then(response => {
-            dispatchHttp({type: 'RESPONSE'})
-            dispatch({type: 'DELETE', id: ingredientId})
-        }).catch(error => {
-            dispatchHttp({type: 'ERROR', errorMessage: error.message});
-        });
-    }, []);
+        // dispatchHttp({type: 'SEND'})
+        sendRequest(`https://react-hooks-update-59122.firebaseio.com/ingredients/${ingredientId}.json`,'DELETE', null, ingredientId, 'REMOVE_INGREDIENT');
+    }, [sendRequest]);
 
     const clearError = () => {
-        dispatchHttp({type: 'CLEAR_ERROR'});
+        // dispatchHttp({type: 'CLEAR_ERROR'});
     };
 
     const ingredientList = useMemo(() => {
@@ -84,12 +77,12 @@ const Ingredients = () => {
             <IngredientList ingredients={userIngredients} onRemoveItem={removeIngredientHandler} />
         )
     }, [userIngredients, removeIngredientHandler]);
-    
+
     return (
         <div className="App">
-            {httpState.error && <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>}
+            {error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
 
-            <IngredientForm onAddIngredient={addIngredientHandler} loading={httpState.loading}/>
+            <IngredientForm onAddIngredient={addIngredientHandler} loading={isLoading}/>
 
             <section>
                 <Search onLoadIngredients={filteredIngredientsHandler}/>
